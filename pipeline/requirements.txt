@@ -1,0 +1,17 @@
+# AI pipeline dependencies — all pinned to echo-app fork SHAs
+echo-realtimestt @ git+https://github.com/nikhilkadian145/echo-realtimestt@cfca6674ff38a128434fcda4a9015c4bd51afe61
+echo-realtimetts @ git+https://github.com/nikhilkadian145/echo-realtimetts@a3ecae8285617dd497c818df37cdb94d2db69974
+echo-chatterbox @ git+https://github.com/nikhilkadian145/echo-chatterbox@eaf93540a1dde06da2f7e93117bfa4a97908393a
+echo-kokoro @ git+https://github.com/nikhilkadian145/echo-kokoro@dfb907a02bba8152ca444717ca5d78747ccb4bec
+
+# Pinned transitive deps
+faster-whisper==1.0.3
+librosa==0.10.2
+torch==2.3.0+cpu
+torchaudio==2.3.0+cpu
+torchvision==0.18.0+cpu
+silero-vad==5.1.0
+numpy==1.26.4
+scipy==1.13.1
+sounddevice==0.4.7
+websockets==12.0

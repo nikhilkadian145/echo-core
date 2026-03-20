@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: Run clippy
+        run: cargo clippy -- -D warnings
+        working-directory: src-tauri
+
+  test-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+      - name: Run cargo test
+        run: cargo test
+        working-directory: src-tauri
+
+  lint-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install ruff==0.4.7
+      - name: Run ruff check
+        run: ruff check pipeline/
+
+  test-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install pytest==8.2.2
+      - name: Run pytest
+        run: pytest pipeline/tests/ -v
