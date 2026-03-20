@@ -22,14 +22,9 @@ os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 # Ensure pipeline root is on the path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-import numpy as np
-import sounddevice as sd
-import soundfile as sf
-
 from shared.types import STTResult
 from stt.base import STTProvider
 from stt.faster_whisper_provider import FasterWhisperSTTProvider
-from vad.thresholds import VAD_SAMPLE_RATE, WINDOW_SIZE_SAMPLES
 
 
 def _print_realtime(text: str):
@@ -52,6 +47,10 @@ def run_from_file(
     stt: STTProvider,
 ) -> None:
     """Process a WAV file through the continuous STT pipeline."""
+    import soundfile as sf
+    import numpy as np
+    from vad.thresholds import VAD_SAMPLE_RATE, WINDOW_SIZE_SAMPLES
+
     print(f"[INFO] Processing file: {filepath}")
 
     audio_data, sample_rate = sf.read(filepath, dtype="int16")
@@ -90,29 +89,18 @@ def run_from_file(
 def run_live_mic(
     stt: STTProvider,
 ) -> None:
-    """Capture from the default mic and pipe through STT."""
-    print("[INFO] Listening on default microphone (16kHz, mono, 32ms chunks)")
+    """Native RealtimeSTT mic capture (uses PyAudio internally for lowest latency)."""
+    print("[INFO] Listening on default microphone (via RealtimeSTT native capture)")
     print("[INFO] Speak now! The text should appear instantly.")
     print("[INFO] Press Ctrl+C to stop.\n")
 
     stt.on_realtime_update(_print_realtime)
     stt.on_transcription_complete(_print_final)
 
-    def audio_callback(indata, frames, time_info, status):
-        # Convert float32 from sounddevice to int16 bytes
-        audio_int16 = (indata[:, 0] * 32768).astype(np.int16)
-        stt.feed_audio(audio_int16.tobytes())
-
     try:
-        with sd.InputStream(
-            samplerate=VAD_SAMPLE_RATE,
-            channels=1,
-            dtype="float32",
-            blocksize=WINDOW_SIZE_SAMPLES,
-            callback=audio_callback,
-        ):
-            while True:
-                time.sleep(0.1)
+        # The provider's internal threads handle all VAD and audio capture
+        while True:
+            time.sleep(0.5)
 
     except KeyboardInterrupt:
         print("\n[INFO] Stopped. Shutting down...")
@@ -135,13 +123,15 @@ def main() -> None:
     print("  ECHO Phase 1 PoC — Instant Realtime STT Pipeline")
     print("=" * 60)
 
-    print(f"[INIT] Loading RealtimeSTT (model={args.model})...")
+    use_mic = args.file is None
+
+    print(f"[INIT] Loading RealtimeSTT (model={args.model}, native_mic={use_mic})...")
     stt_provider: STTProvider = FasterWhisperSTTProvider(
         model=args.model,
         compute_type="int8",
         device="cpu",
-        beam_size=1,
         language=args.language,
+        use_microphone=use_mic,
     )
     print("[INIT] Pipeline ready!\n")
 

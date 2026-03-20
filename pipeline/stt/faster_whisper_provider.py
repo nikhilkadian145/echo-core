@@ -33,8 +33,8 @@ class FasterWhisperSTTProvider(STTProvider):
         model: str = "large-v3-turbo",
         compute_type: str = "int8",
         device: str = "cpu",
-        beam_size: int = 1,
         language: str = "en",
+        use_microphone: bool = True,
     ) -> None:
         super().__init__()
         from RealtimeSTT import AudioToTextRecorder
@@ -43,33 +43,48 @@ class FasterWhisperSTTProvider(STTProvider):
         self._language = language
 
         logger.info(
-            "Initializing RealtimeSTT (main model=%s, compute=%s, device=%s)",
-            model, compute_type, device,
+            "Initializing RealtimeSTT (main model=%s, mic=%s)",
+            model, use_microphone,
         )
 
-        # Initialize RealtimeSTT in feed-audio mode (no internal mic capture)
-        self._recorder = AudioToTextRecorder(
-            model=model,
-            compute_type=compute_type,
-            device=device,
-            beam_size=beam_size,
-            language=language if language else "en",
-            use_microphone=False,
-            spinner=False,
-            no_log_file=True,
-            level=logging.WARNING,
-            # Real-time partial transcriptions (instant updates)
-            enable_realtime_transcription=True,
-            use_main_model_for_realtime=False,
-            realtime_model_type="tiny", # Tiny model for instant partials
-            realtime_processing_pause=0.05,
-            on_realtime_transcription_update=self._handle_realtime_update,
-            # Silero VAD settings
-            silero_sensitivity=0.4,
-            webrtc_sensitivity=3,
-            post_speech_silence_duration=0.5,
-            min_length_of_recording=0.2,
-        )
+        recorder_config = {
+            'spinner': False,
+            'model': model,
+            'realtime_model_type': 'tiny.en' if language == 'en' else 'tiny',
+            'language': language,
+            'compute_type': compute_type,
+            'device': device,
+            'use_microphone': use_microphone,
+            
+            # KoljaB's exact realtime optimization parameters
+            'silero_sensitivity': 0.05,
+            'webrtc_sensitivity': 3,
+            'post_speech_silence_duration': 0.7,
+            'min_length_of_recording': 1.1,
+            'min_gap_between_recordings': 0,
+            
+            'enable_realtime_transcription': True,
+            'realtime_processing_pause': 0.02,
+            'on_realtime_transcription_update': self._handle_realtime_update,
+            
+            'silero_deactivity_detection': True,
+            'early_transcription_on_silence': 0,
+            'beam_size': 5,
+            'beam_size_realtime': 3,
+            'no_log_file': True,
+            'initial_prompt_realtime': (
+                "End incomplete sentences with ellipses.\n"
+                "Examples:\n"
+                "Complete: The sky is blue.\n"
+                "Incomplete: When the sky...\n"
+                "Complete: She walked home.\n"
+                "Incomplete: Because he...\n"
+            ),
+            'silero_use_onnx': True,
+            'faster_whisper_vad_filter': False,
+        }
+
+        self._recorder = AudioToTextRecorder(**recorder_config)
 
         # Start the background thread for finalized transcriptions
         self._running = True
