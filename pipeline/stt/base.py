@@ -1,7 +1,5 @@
-"""Abstract base class for Speech-to-Text providers."""
-
 from abc import ABC, abstractmethod
-from typing import Literal
+from typing import Literal, Callable, Optional
 
 import sys
 import os
@@ -14,45 +12,35 @@ class STTProvider(ABC):
     """
     Abstract interface for Speech-to-Text.
 
-    All STT implementations must subclass this. Calling code should only
-    reference this interface — never import a specific STT library directly.
+    Designed for streaming real-time transcription.
     """
 
+    def __init__(self) -> None:
+        self._on_realtime_update: Optional[Callable[[str], None]] = None
+        self._on_transcription_complete: Optional[Callable[[STTResult], None]] = None
+
+    def on_realtime_update(self, callback: Callable[[str], None]) -> None:
+        """Register callback for instant real-time text updates."""
+        self._on_realtime_update = callback
+
+    def on_transcription_complete(self, callback: Callable[[STTResult], None]) -> None:
+        """Register callback for final confirmed transcription of an utterance."""
+        self._on_transcription_complete = callback
+
     @abstractmethod
-    def transcribe_chunk(
-        self,
-        pcm_chunk: bytes,
-        language_primary: str,
-        language_secondary: str | None = None,
-    ) -> STTResult:
+    def feed_audio(self, pcm_chunk: bytes) -> None:
         """
-        Transcribe an accumulated audio chunk.
-
-        Args:
-            pcm_chunk: Raw PCM audio bytes (16-bit, 16kHz, mono) —
-                       typically an entire utterance accumulated between
-                       speech_start and speech_end.
-            language_primary: Primary language code (e.g. "en", "hi").
-            language_secondary: Optional secondary language code for
-                                code-switching scenarios.
-
-        Returns:
-            STTResult with transcript text, word timestamps, finality flag,
-            and detected language.
+        Feed a continuous stream of raw PCM audio bytes (16-bit, 16kHz, mono).
+        The provider internally handles VAD and chunking.
         """
         ...
 
     @abstractmethod
     def set_task(self, task: Literal["transcribe", "translate"]) -> None:
-        """
-        Set the transcription task.
-
-        - "transcribe": output in the same language as input
-        - "translate": output is always English regardless of input language
-        """
+        """Set the transcription task (transcribe vs translate)."""
         ...
 
     @abstractmethod
-    def reset(self) -> None:
-        """Reset internal state between utterances."""
+    def shutdown(self) -> None:
+        """Clean up threads and resources."""
         ...

@@ -37,15 +37,14 @@ class TestSTTInterface:
         assert wt.end == 0.5
         assert wt.probability == 0.95
 
-    def test_set_task_values(self):
-        """set_task should accept 'transcribe' and 'translate' literals."""
-        # This is a structural test — we verify the interface accepts these values
-        # without instantiating the heavy model
+    def test_stt_interface_methods(self):
+        """STTProvider must define the realtime streaming methods."""
         from stt.base import STTProvider
         assert hasattr(STTProvider, "set_task")
-        assert hasattr(STTProvider, "reset")
-        assert hasattr(STTProvider, "transcribe_chunk")
-
+        assert hasattr(STTProvider, "feed_audio")
+        assert hasattr(STTProvider, "shutdown")
+        assert hasattr(STTProvider, "on_realtime_update")
+        assert hasattr(STTProvider, "on_transcription_complete")
     def test_no_direct_faster_whisper_import(self):
         """
         Verify calling code never imports faster_whisper or RealtimeSTT directly.
